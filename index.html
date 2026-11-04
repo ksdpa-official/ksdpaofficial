@@ -416,17 +416,10 @@ setInterval(glitchTick, 50);
 
 /* ---------- 데이터 저장소 (JSON) ---------- */
 async function rq(method, path, body){
-  const sep = path.includes('?') ? '&' : '?';
-  const url = `${CONFIG.DB_URL.replace(/\/$/,'')}/${path}.json${sep}_ts=${Date.now()}_${Math.random().toString(36).slice(2,7)}`;
-  const r = await fetch(url, {
+  const r = await fetch(`${CONFIG.DB_URL.replace(/\/$/,'')}/${path}.json`, {
     method,
-    headers: {
-      'Content-Type': 'application/json',
-      'Cache-Control': 'no-cache, no-store, max-age=0, must-revalidate',
-      'Pragma': 'no-cache'
-    },
-    body: body === undefined ? undefined : JSON.stringify(body),
-    cache: 'no-store'
+    headers: { 'Content-Type': 'application/json' },
+    body: body === undefined ? undefined : JSON.stringify(body)
   });
   if (!r.ok) throw new Error('DB ' + r.status);
   return r.json();
@@ -1132,12 +1125,12 @@ function pageLogin(){
   $app.innerHTML = plainShell('로그인', '특수재난경찰청 포털 로그인입니다.', '로그인', `
     <div style="max-width:420px;margin:24px auto;border:1px solid var(--line);padding:30px 24px;background:#fff">
       <h2 style="font-size:20px;color:var(--navy);margin-bottom:20px;text-align:center">누리집 로그인</h2>
-      <form class="form" id="login-form" autocomplete="on" onsubmit="return false;">
+      <form class="form" id="login-form" autocomplete="off" onsubmit="return false;">
         <label>아이디</label>
-        <input type="text" id="l-user" name="username" placeholder="영문 및 숫자 입력" autocomplete="username">
+        <input type="text" id="l-user" placeholder="영문 및 숫자 입력" autocomplete="off" readonly onfocus="this.removeAttribute('readonly')">
         <div class="caps-bubble" id="l-user-caps">⚠️ &lt;Caps Lock&gt;이 켜져 있습니다. (대소문자 구분)</div>
         <label style="margin-top:14px">비밀번호</label>
-        <input type="password" id="l-pw" name="password" placeholder="비밀번호를 입력하세요" autocomplete="current-password">
+        <input type="text" id="l-pw" class="pw-secure" placeholder="비밀번호를 입력하세요" autocomplete="off" readonly onfocus="this.removeAttribute('readonly')">
         <div class="caps-bubble" id="l-pw-caps">⚠️ &lt;Caps Lock&gt;이 켜져 있습니다.</div>
         <div class="err" id="l-err"></div>
         <button type="submit" class="btn" id="btn-do-login" style="width:100%;margin-top:16px;padding:12px 0;font-weight:700">로그인</button>
@@ -1152,11 +1145,10 @@ function pageLogin(){
   const pwIn = document.getElementById('l-pw');
   const pwCaps = document.getElementById('l-pw-caps');
 
-  // 처음 들어왔을 때는 바로 박히지 않고 빈칸으로 유지 -> 클릭 시 저장된 기록 드롭다운이 뜨도록 함
   const clearL = () => { if (userIn) userIn.value = ''; if (pwIn) pwIn.value = ''; };
   clearL();
   setTimeout(clearL, 50);
-  setTimeout(clearL, 120);
+  setTimeout(clearL, 150);
 
   setupCaps(userIn, userCaps);
   setupCaps(pwIn, pwCaps);
@@ -1223,10 +1215,10 @@ function pageRegister(){
   $app.innerHTML = plainShell('회원가입', '특수재난경찰청 누리집 회원가입입니다.', '회원가입', `
     <div style="max-width:480px;margin:24px auto;border:1px solid var(--line);padding:30px 24px;background:#fff">
       <h2 style="font-size:20px;color:var(--navy);margin-bottom:20px;text-align:center">신규 회원가입</h2>
-      <form class="form" id="register-form" autocomplete="on" onsubmit="return false;">
+      <form class="form" id="register-form" autocomplete="off" onsubmit="return false;">
         <label>아이디 (영문·숫자 4~16자)</label>
         <div style="display:flex;gap:6px">
-          <input type="text" id="r-user" name="username" maxlength="16" placeholder="영문, 숫자만 입력 가능" autocomplete="username" style="flex:1">
+          <input type="text" id="r-user" maxlength="16" placeholder="영문, 숫자만 입력 가능" autocomplete="off" style="flex:1" readonly onfocus="this.removeAttribute('readonly')">
           <button type="button" class="btn ghost" id="btn-chk-user" style="padding:8px 14px;white-space:nowrap;font-size:13.5px">중복확인</button>
         </div>
         <div class="caps-bubble" id="r-user-caps">⚠️ &lt;Caps Lock&gt;이 켜져 있습니다. (대소문자 구분)</div>
@@ -1234,18 +1226,18 @@ function pageRegister(){
 
         <label>닉네임 (2~12자)</label>
         <div style="display:flex;gap:6px">
-          <input type="text" id="r-nick" name="nickname" maxlength="12" placeholder="한글, 영문, 숫자, 한자 등 (특수문자 불가)" autocomplete="nickname" style="flex:1">
+          <input type="text" id="r-nick" maxlength="12" placeholder="한글, 영문, 숫자, 한자 등 (특수문자 불가)" autocomplete="off" style="flex:1" readonly onfocus="this.removeAttribute('readonly')">
           <button type="button" class="btn ghost" id="btn-chk-nick" style="padding:8px 14px;white-space:nowrap;font-size:13.5px">중복확인</button>
         </div>
         <div id="r-nick-msg" style="font-size:13px;min-height:22px;margin:4px 0"></div>
 
         <label>비밀번호 (영문·숫자·특수문자 4자 이상)</label>
-        <input type="password" id="r-pw" name="new-password" maxlength="40" placeholder="영문, 숫자, 특수문자 조합" autocomplete="new-password">
+        <input type="text" id="r-pw" class="pw-secure" maxlength="40" placeholder="영문, 숫자, 특수문자 조합" autocomplete="off" readonly onfocus="this.removeAttribute('readonly')">
         <div class="caps-bubble" id="r-pw-caps">⚠️ &lt;Caps Lock&gt;이 켜져 있습니다.</div>
         <div id="r-pw-msg" style="font-size:13px;min-height:20px;margin:4px 0"></div>
         
         <label style="margin-top:10px">비밀번호 확인</label>
-        <input type="password" id="r-pw2" name="confirm-new-password" maxlength="40" autocomplete="new-password">
+        <input type="text" id="r-pw2" class="pw-secure" maxlength="40" autocomplete="off" readonly onfocus="this.removeAttribute('readonly')">
         <div class="caps-bubble" id="r-pw2-caps">⚠️ &lt;Caps Lock&gt;이 켜져 있습니다.</div>
         
         <div class="err" id="r-err"></div>
@@ -1683,8 +1675,8 @@ async function pageView(id){
           </div>
         ` : `
           <div style="display:flex;gap:8px;margin-bottom:8px">
-            <input type="text" id="c-author" name="author" maxlength="12" placeholder="닉네임 (최대 12자)" autocomplete="nickname" style="flex:1">
-            <input type="text" id="c-pw" name="comment_pin" class="pw-secure" maxlength="40" placeholder="비밀번호 (수정·삭제용, 4자 이상)" autocomplete="off" style="flex:1">
+            <input type="text" id="c-author" maxlength="12" placeholder="닉네임 (최대 12자)" autocomplete="off" style="flex:1" readonly onfocus="this.removeAttribute('readonly')">
+            <input type="text" id="c-pw" class="pw-secure" maxlength="40" placeholder="비밀번호 (수정·삭제용, 4자 이상)" autocomplete="off" style="flex:1" readonly onfocus="this.removeAttribute('readonly')">
           </div>
         `}
         <textarea id="c-text" maxlength="500" placeholder="댓글을 입력하십시오 (텍스트만 가능, 최대 500자)"></textarea>
