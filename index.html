@@ -416,9 +416,15 @@ setInterval(glitchTick, 50);
 
 /* ---------- 데이터 저장소 (JSON) ---------- */
 async function rq(method, path, body){
-  const r = await fetch(`${CONFIG.DB_URL.replace(/\/$/,'')}/${path}.json`, {
+  const sep = path.includes('?') ? '&' : '?';
+  const url = `${CONFIG.DB_URL.replace(/\/$/,'')}/${path}.json${sep}_ts=${Date.now()}_${Math.random().toString(36).slice(2,7)}`;
+  const r = await fetch(url, {
     method,
-    headers: {'Content-Type':'application/json'},
+    headers: {
+      'Content-Type': 'application/json',
+      'Cache-Control': 'no-cache, no-store, max-age=0, must-revalidate',
+      'Pragma': 'no-cache'
+    },
     body: body === undefined ? undefined : JSON.stringify(body),
     cache: 'no-store'
   });
@@ -525,40 +531,19 @@ const Store = {
     if (this.remote) {
       try {
         const fetched = await rq('GET','posts');
-        if (fetched && Object.keys(fetched).length > 0) {
-          this.posts = fetched;
-        } else {
-          this.posts = JSON.parse(JSON.stringify(DEFAULT_POSTS));
-          try { await rq('PUT', 'posts', this.posts); } catch(e){}
-        }
+        this.posts = (fetched && typeof fetched === 'object') ? fetched : {};
         return;
       } catch(e){
-        console.warn('Firebase posts load failed, falling back:', e);
+        console.warn('Firebase posts load failed:', e);
       }
     }
     const raw = localStorage.getItem(this.KEY);
     if (raw) {
-      try {
-        this.posts = JSON.parse(raw) || {};
-        if (Object.keys(this.posts).length === 0) {
-          this.posts = JSON.parse(JSON.stringify(DEFAULT_POSTS));
-          this.persist();
-        }
-        return;
-      } catch(e){}
+      try { this.posts = JSON.parse(raw) || {}; return; } catch(e){}
     }
-    try {
-      const r = await fetch(CONFIG.SEED_URL, {cache:'no-store'});
-      this.posts = r.ok ? await r.json() : JSON.parse(JSON.stringify(DEFAULT_POSTS));
-    } catch(e){
-      this.posts = JSON.parse(JSON.stringify(DEFAULT_POSTS));
-    }
-    if (Object.keys(this.posts).length === 0) {
-      this.posts = JSON.parse(JSON.stringify(DEFAULT_POSTS));
-    }
-    this.persist();
+    this.posts = JSON.parse(JSON.stringify(DEFAULT_POSTS));
   },
-  persist(){ try { localStorage.setItem(this.KEY, JSON.stringify(this.posts)); } catch(e){} },
+  persist(){ if (!this.remote) try { localStorage.setItem(this.KEY, JSON.stringify(this.posts)); } catch(e){} },
   async create(p){ this.posts[p.id] = p; this.remote ? await rq('PUT','posts/'+p.id,p) : this.persist(); },
   async update(id,f){ Object.assign(this.posts[id], f); this.remote ? await rq('PATCH','posts/'+id,f) : this.persist(); },
   async remove(id){ delete this.posts[id]; this.remote ? await rq('DELETE','posts/'+id) : this.persist(); },
@@ -598,7 +583,10 @@ const Store = {
     }
   },
   list(){ return Object.values(this.posts).sort((a,b) => (b.createdAt||'').localeCompare(a.createdAt||'')); },
-  cmts(p){ return Object.values(p.comments || {}).sort((a,b) => (a.createdAt||'').localeCompare(b.createdAt||'')); }
+  cmts(p){
+    if (!p || !p.comments) return [];
+    return Object.values(p.comments).sort((a,b) => (a.createdAt||'').localeCompare(b.createdAt||''));
+  }
 };
 
 /* ---------- 회원 데이터 저장소 (JSON) ---------- */
@@ -610,48 +598,20 @@ const UserStore = {
     if (this.remote) {
       try {
         const fetched = await rq('GET', 'users');
-        if (fetched && Object.keys(fetched).length > 0) {
-          this.users = fetched;
-          for (const [k, v] of Object.entries(DEFAULT_USERS)) {
-            if (!this.users[k]) {
-              this.users[k] = v;
-              try { await rq('PUT', 'users/' + encodeURIComponent(k), v); } catch(e){}
-            }
-          }
-        } else {
-          this.users = JSON.parse(JSON.stringify(DEFAULT_USERS));
-          try { await rq('PUT', 'users', this.users); } catch(e){}
-        }
+        this.users = (fetched && typeof fetched === 'object') ? fetched : {};
         return;
       } catch(e){
-        console.warn('Firebase users load failed, falling back:', e);
+        console.warn('Firebase users load failed:', e);
       }
     }
     const raw = localStorage.getItem(this.KEY);
     if (raw) {
-      try {
-        this.users = JSON.parse(raw) || {};
-        let modified = false;
-        for (const [k, v] of Object.entries(DEFAULT_USERS)) {
-          if (!this.users[k]) { this.users[k] = v; modified = true; }
-        }
-        if (modified) this.persist();
-        return;
-      } catch(e){}
+      try { this.users = JSON.parse(raw) || {}; return; } catch(e){}
     }
-    try {
-      const r = await fetch(CONFIG.USER_SEED_URL, {cache:'no-store'});
-      this.users = r.ok ? await r.json() : JSON.parse(JSON.stringify(DEFAULT_USERS));
-    } catch(e){
-      this.users = JSON.parse(JSON.stringify(DEFAULT_USERS));
-    }
-    for (const [k, v] of Object.entries(DEFAULT_USERS)) {
-      if (!this.users[k]) this.users[k] = v;
-    }
-    this.persist();
+    this.users = JSON.parse(JSON.stringify(DEFAULT_USERS));
   },
   persist(){
-    try { localStorage.setItem(this.KEY, JSON.stringify(this.users)); } catch(e){}
+    if (!this.remote) try { localStorage.setItem(this.KEY, JSON.stringify(this.users)); } catch(e){}
   },
   async create(user){
     this.users[user.username] = user;
@@ -746,11 +706,6 @@ async function route(){
   glitchTick();
 }
 window.addEventListener('hashchange', route);
-setInterval(() => {
-  if (!Store.remote) return;
-  const { parts } = parse();
-  if (!parts.length || (parts[0]==='civil' && !parts[1])) route();
-}, CONFIG.POLL_MS);
 
 /* ---------- 공통 틀 (서브 비주얼 + 좌측 메뉴 + 본문 + 담당부서) ---------- */
 const subLabel = (sec,k) => (SECTIONS[sec].items.find(i => i[0] === k) || [,''])[1];
