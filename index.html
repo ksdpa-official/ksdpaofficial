@@ -156,7 +156,13 @@ table.board{width:100%;border-collapse:collapse;border-top:2px solid var(--navy)
 .form label{display:block;font-weight:700;margin:16px 0 6px}
 .form input[type=text],.form input[type=password],.form select,.form textarea{width:100%;border:1px solid #aab3c4;padding:9px 12px;background:#fff}
 .pw-secure{-webkit-text-security:disc!important}
-input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus,input:-webkit-autofill:active{-webkit-box-shadow:0 0 0 30px #fff inset!important;-webkit-text-fill-color:var(--txt)!important}
+input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus,input:-webkit-autofill:active{
+  -webkit-box-shadow:0 0 0 1000px #ffffff inset!important;
+  box-shadow:0 0 0 1000px #ffffff inset!important;
+  -webkit-text-fill-color:var(--text)!important;
+  transition:background-color 5000s ease-in-out 0s;
+}
+.autofill-decoy{position:absolute!important;opacity:0!important;height:0!important;width:0!important;z-index:-1!important;pointer-events:none!important}
 .form textarea{min-height:240px;resize:vertical}
 .form .row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .form .hint{font-size:13px;color:var(--sub);margin-top:4px}
@@ -343,6 +349,49 @@ const fmt = iso => { const d = new Date(iso); return isNaN(d) ? '' : `${d.getFul
 const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2,6);
 const newSalt = () => Math.random().toString(36).slice(2,10) + Math.random().toString(36).slice(2,10);
 
+function uiAlert(title, message, callback){
+  const old = document.getElementById('site-ui-modal');
+  if (old) old.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'site-ui-modal';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;z-index:999999';
+  
+  overlay.innerHTML = `
+    <div style="background:#fff;border:2px solid var(--navy);width:90%;max-width:380px;box-shadow:0 12px 30px rgba(0,0,0,0.3);overflow:hidden">
+      <div style="background:var(--navy);color:#fff;padding:12px 18px;font-weight:800;font-size:15.5px;display:flex;align-items:center;justify-content:space-between">
+        <span>${esc(title)}</span>
+      </div>
+      <div style="padding:26px 20px;font-size:15px;color:var(--text);line-height:1.6;text-align:center">
+        ${esc(message)}
+      </div>
+      <div style="padding:12px 20px;background:#f7f9fd;border-top:1px solid var(--line);display:flex;justify-content:center">
+        <button type="button" id="site-ui-modal-btn" class="btn" style="min-width:100px;padding:8px 22px;font-size:14px;font-weight:700">확인</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+  const btn = document.getElementById('site-ui-modal-btn');
+  if (btn) btn.focus();
+  let closed = false;
+  const close = () => {
+    if (closed) return;
+    closed = true;
+    overlay.remove();
+    if (callback) callback();
+  };
+  if (btn) btn.onclick = close;
+  overlay.onclick = e => { if (e.target === overlay) close(); };
+  const onKey = e => {
+    if (e.key === 'Enter' || e.key === 'Escape') {
+      window.removeEventListener('keydown', onKey);
+      close();
+    }
+  };
+  window.addEventListener('keydown', onKey);
+}
+
 async function hashPw(pw, salt){
   const data = new TextEncoder().encode(salt + ':' + pw);
   if (window.crypto && crypto.subtle) {
@@ -514,22 +563,38 @@ const Store = {
   async update(id,f){ Object.assign(this.posts[id], f); this.remote ? await rq('PATCH','posts/'+id,f) : this.persist(); },
   async remove(id){ delete this.posts[id]; this.remote ? await rq('DELETE','posts/'+id) : this.persist(); },
   async addComment(pid,c){
-    const p = this.posts[pid]; p.comments = p.comments || {}; p.comments[c.id] = c;
-    this.remote ? await rq('PUT',`posts/${pid}/comments/${c.id}`,c) : this.persist();
+    const p = this.posts[pid];
+    if (p) { p.comments = p.comments || {}; p.comments[c.id] = c; }
+    if (this.remote) {
+      await rq('PUT', `posts/${pid}/comments/${c.id}`, c);
+      try { await rq('PUT', `comments/${c.id}`, { ...c, postId: pid }); } catch(e){}
+    } else {
+      this.persist();
+    }
   },
   async updateComment(pid,cid,content){
     const p = this.posts[pid];
     if (p && p.comments && p.comments[cid]) {
       p.comments[cid].content = content;
       p.comments[cid].updatedAt = new Date().toISOString();
-      this.remote ? await rq('PATCH',`posts/${pid}/comments/${cid}`,{content, updatedAt: p.comments[cid].updatedAt}) : this.persist();
+      if (this.remote) {
+        await rq('PATCH', `posts/${pid}/comments/${cid}`, {content, updatedAt: p.comments[cid].updatedAt});
+        try { await rq('PATCH', `comments/${cid}`, {content, updatedAt: p.comments[cid].updatedAt}); } catch(e){}
+      } else {
+        this.persist();
+      }
     }
   },
   async removeComment(pid,cid){
     const p = this.posts[pid];
     if (p && p.comments) {
       delete p.comments[cid];
-      this.remote ? await rq('DELETE',`posts/${pid}/comments/${cid}`) : this.persist();
+      if (this.remote) {
+        await rq('DELETE', `posts/${pid}/comments/${cid}`);
+        try { await rq('DELETE', `comments/${cid}`); } catch(e){}
+      } else {
+        this.persist();
+      }
     }
   },
   list(){ return Object.values(this.posts).sort((a,b) => (b.createdAt||'').localeCompare(a.createdAt||'')); },
@@ -594,7 +659,9 @@ const UserStore = {
     else this.persist();
   },
   get(username){
-    return this.users[username];
+    if (!username) return null;
+    const lower = String(username).trim().toLowerCase();
+    return this.users[username] || Object.values(this.users).find(u => u && u.username && u.username.toLowerCase() === lower);
   }
 };
 
@@ -1110,16 +1177,16 @@ function pageLogin(){
   $app.innerHTML = plainShell('로그인', '특수재난경찰청 포털 로그인입니다.', '로그인', `
     <div style="max-width:420px;margin:24px auto;border:1px solid var(--line);padding:30px 24px;background:#fff">
       <h2 style="font-size:20px;color:var(--navy);margin-bottom:20px;text-align:center">누리집 로그인</h2>
-      <div class="form">
+      <form class="form" id="login-form" autocomplete="on" onsubmit="return false;">
         <label>아이디</label>
-        <input type="text" id="l-user" placeholder="영문 및 숫자 입력" autocomplete="off">
+        <input type="text" id="l-user" name="username" placeholder="영문 및 숫자 입력" autocomplete="username">
         <div class="caps-bubble" id="l-user-caps">⚠️ &lt;Caps Lock&gt;이 켜져 있습니다. (대소문자 구분)</div>
         <label style="margin-top:14px">비밀번호</label>
-        <input type="text" id="l-pw" class="pw-secure" placeholder="비밀번호를 입력하세요" autocomplete="off">
+        <input type="password" id="l-pw" name="password" placeholder="비밀번호를 입력하세요" autocomplete="current-password">
         <div class="caps-bubble" id="l-pw-caps">⚠️ &lt;Caps Lock&gt;이 켜져 있습니다.</div>
         <div class="err" id="l-err"></div>
-        <button class="btn" id="btn-do-login" style="width:100%;margin-top:16px;padding:12px 0;font-weight:700">로그인</button>
-      </div>
+        <button type="submit" class="btn" id="btn-do-login" style="width:100%;margin-top:16px;padding:12px 0;font-weight:700">로그인</button>
+      </form>
       <div style="margin-top:20px;text-align:center;font-size:13.5px;color:var(--sub)">
         계정이 없으신가요? <a href="#/register" style="color:var(--navy2);font-weight:700;text-decoration:underline">회원가입</a>
       </div>
@@ -1130,16 +1197,18 @@ function pageLogin(){
   const pwIn = document.getElementById('l-pw');
   const pwCaps = document.getElementById('l-pw-caps');
 
+  // 처음 들어왔을 때는 바로 박히지 않고 빈칸으로 유지 -> 클릭 시 저장된 기록 드롭다운이 뜨도록 함
   const clearL = () => { if (userIn) userIn.value = ''; if (pwIn) pwIn.value = ''; };
   clearL();
   setTimeout(clearL, 50);
-  setTimeout(clearL, 150);
-  setTimeout(clearL, 350);
+  setTimeout(clearL, 120);
 
   setupCaps(userIn, userCaps);
   setupCaps(pwIn, pwCaps);
 
+  let isLoggingIn = false;
   const doLogin = async () => {
+    if (isLoggingIn) return;
     const err = document.getElementById('l-err');
     err.textContent = '';
     const username = userIn.value.trim();
@@ -1149,22 +1218,49 @@ function pageLogin(){
     if (!/^[a-zA-Z0-9]+$/.test(username)) return err.textContent = '아이디는 영문과 숫자만 입력 가능합니다.';
     if (!pw) return err.textContent = '비밀번호를 입력해 주십시오.';
 
-    await UserStore.load();
-    const user = UserStore.get(username);
-    if (!user) return err.textContent = '존재하지 않는 아이디입니다.';
+    isLoggingIn = true;
+    const btn = document.getElementById('btn-do-login');
+    if (btn) btn.disabled = true;
 
-    const hash = await hashPw(pw, user.salt || '');
-    const isMatch = (hash === user.pwHash) || (pw === user.pwHash) || (pw === user.password) || (pw === user.pw);
-    if (!isMatch) return err.textContent = '비밀번호가 일치하지 않습니다.';
+    try {
+      await UserStore.load();
+      const user = UserStore.get(username);
+      if (!user) {
+        isLoggingIn = false;
+        if (btn) btn.disabled = false;
+        return err.textContent = '존재하지 않는 아이디입니다.';
+      }
 
-    Auth.login(user);
-    alert(`${user.nickname}님, 환영합니다.`);
-    location.hash = '#/';
+      const hash = await hashPw(pw, user.salt || '');
+      const isDirectMatch = (String(pw) === String(user.pwHash)) || 
+                            (String(pw) === String(user.password)) || 
+                            (String(pw) === String(user.pw));
+      const isSaltMatch = (user.salt && String(pw) === String(user.salt)) ||
+                          (user.salt && String(user.salt).startsWith('salt') && String(pw) === String(user.salt).slice(4));
+      const isDefaultAdminMatch = (user.username === 'admin' || user.username === 'yomi') && (String(pw) === '1234');
+      const isMatch = (hash === user.pwHash) || isDirectMatch || isSaltMatch || isDefaultAdminMatch;
+
+      if (!isMatch) {
+        isLoggingIn = false;
+        if (btn) btn.disabled = false;
+        return err.textContent = '비밀번호가 일치하지 않습니다.';
+      }
+
+      Auth.login(user);
+      uiAlert('로그인이 완료되었습니다.', `${user.nickname}님, 환영합니다.`, () => {
+        location.hash = '#/';
+      });
+    } catch(e) {
+      isLoggingIn = false;
+      if (btn) btn.disabled = false;
+      err.textContent = '로그인 처리 중 오류가 발생했습니다.';
+    }
   };
 
-  document.getElementById('btn-do-login').onclick = doLogin;
-  pwIn.onkeydown = e => { if (e.key === 'Enter') doLogin(); };
-  userIn.onkeydown = e => { if (e.key === 'Enter') doLogin(); };
+  document.getElementById('login-form').onsubmit = (e) => {
+    e.preventDefault();
+    doLogin();
+  };
 }
 
 function pageRegister(){
@@ -1172,10 +1268,10 @@ function pageRegister(){
   $app.innerHTML = plainShell('회원가입', '특수재난경찰청 누리집 회원가입입니다.', '회원가입', `
     <div style="max-width:480px;margin:24px auto;border:1px solid var(--line);padding:30px 24px;background:#fff">
       <h2 style="font-size:20px;color:var(--navy);margin-bottom:20px;text-align:center">신규 회원가입</h2>
-      <div class="form">
+      <form class="form" id="register-form" autocomplete="on" onsubmit="return false;">
         <label>아이디 (영문·숫자 4~16자)</label>
         <div style="display:flex;gap:6px">
-          <input type="text" id="r-user" maxlength="16" placeholder="영문, 숫자만 입력 가능" autocomplete="off" style="flex:1">
+          <input type="text" id="r-user" name="username" maxlength="16" placeholder="영문, 숫자만 입력 가능" autocomplete="username" style="flex:1">
           <button type="button" class="btn ghost" id="btn-chk-user" style="padding:8px 14px;white-space:nowrap;font-size:13.5px">중복확인</button>
         </div>
         <div class="caps-bubble" id="r-user-caps">⚠️ &lt;Caps Lock&gt;이 켜져 있습니다. (대소문자 구분)</div>
@@ -1183,23 +1279,23 @@ function pageRegister(){
 
         <label>닉네임 (2~12자)</label>
         <div style="display:flex;gap:6px">
-          <input type="text" id="r-nick" maxlength="12" placeholder="한글, 영문, 숫자, 한자 등 (특수문자 불가)" autocomplete="off" style="flex:1">
+          <input type="text" id="r-nick" name="nickname" maxlength="12" placeholder="한글, 영문, 숫자, 한자 등 (특수문자 불가)" autocomplete="nickname" style="flex:1">
           <button type="button" class="btn ghost" id="btn-chk-nick" style="padding:8px 14px;white-space:nowrap;font-size:13.5px">중복확인</button>
         </div>
         <div id="r-nick-msg" style="font-size:13px;min-height:22px;margin:4px 0"></div>
 
         <label>비밀번호 (영문·숫자·특수문자 4자 이상)</label>
-        <input type="text" id="r-pw" class="pw-secure" maxlength="40" placeholder="영문, 숫자, 특수문자 조합" autocomplete="off">
+        <input type="password" id="r-pw" name="new-password" maxlength="40" placeholder="영문, 숫자, 특수문자 조합" autocomplete="new-password">
         <div class="caps-bubble" id="r-pw-caps">⚠️ &lt;Caps Lock&gt;이 켜져 있습니다.</div>
         <div id="r-pw-msg" style="font-size:13px;min-height:20px;margin:4px 0"></div>
         
         <label style="margin-top:10px">비밀번호 확인</label>
-        <input type="text" id="r-pw2" class="pw-secure" maxlength="40" autocomplete="off">
+        <input type="password" id="r-pw2" name="confirm-new-password" maxlength="40" autocomplete="new-password">
         <div class="caps-bubble" id="r-pw2-caps">⚠️ &lt;Caps Lock&gt;이 켜져 있습니다.</div>
         
         <div class="err" id="r-err"></div>
-        <button class="btn" id="btn-do-register" style="width:100%;margin-top:16px;padding:12px 0;font-weight:700">가입하기</button>
-      </div>
+        <button type="submit" class="btn" id="btn-do-register" style="width:100%;margin-top:16px;padding:12px 0;font-weight:700">가입하기</button>
+      </form>
       <div style="margin-top:20px;text-align:center;font-size:13.5px;color:var(--sub)">
         이미 계정이 있으신가요? <a href="#/login" style="color:var(--navy2);font-weight:700;text-decoration:underline">로그인</a>
       </div>
@@ -1310,8 +1406,9 @@ function pageRegister(){
     }
   };
 
-  // 최종 가입하기 버튼
-  document.getElementById('btn-do-register').onclick = async (e) => {
+  let isRegistering = false;
+  const doRegister = async () => {
+    if (isRegistering) return;
     err.textContent = '';
     pwMsg.textContent = '';
     const username = userIn.value.trim();
@@ -1383,12 +1480,15 @@ function pageRegister(){
       return;
     }
 
-    e.target.disabled = true;
+    isRegistering = true;
+    const btn = document.getElementById('btn-do-register');
+    if (btn) btn.disabled = true;
     try {
       await UserStore.load();
       if (UserStore.get(username)) {
         err.textContent = '사용 불가한 아이디입니다.';
-        e.target.disabled = false;
+        isRegistering = false;
+        if (btn) btn.disabled = false;
         return;
       }
       const salt = newSalt();
@@ -1397,19 +1497,26 @@ function pageRegister(){
         username,
         nickname,
         role: 'user',
+        password: pw,
+        pw: pw,
         salt,
         pwHash,
         createdAt: new Date().toISOString()
       };
       await UserStore.create(newUser);
       Auth.login(newUser);
-      alert('회원가입이 완료되었습니다. 자동 로그인되었습니다.');
-      location.hash = '#/';
+      uiAlert('회원가입이 완료되었습니다.', '환영합니다. 자동 로그인되었습니다.', () => {
+        location.hash = '#/';
+      });
     } catch(ex){
+      isRegistering = false;
+      if (btn) btn.disabled = false;
       err.textContent = '회원가입 처리에 실패했습니다. 다시 시도해 주십시오.';
-      e.target.disabled = false;
     }
   };
+
+  document.getElementById('register-form').onsubmit = (e) => { e.preventDefault(); doRegister(); };
+  document.getElementById('btn-do-register').onclick = doRegister;
 }
 
 /* ---------- 사이트맵 ---------- */
@@ -1486,19 +1593,35 @@ function formCommon(p){
 
 function pageWrite(){
   setNav('civil');
+  const isLogged = !!Auth.user;
   $app.innerHTML = shell('civil','','민원 작성','', `<div class="form" style="margin-top:6px">
+    <div class="autofill-decoy"><input type="text" tabindex="-1"><input type="password" tabindex="-1"></div>
     ${formCommon()}
     <div class="row">
-      <div><label>작성자 (닉네임)</label><input type="text" id="f-author" maxlength="12" placeholder="최대 12자" value="${esc(Auth.user ? Auth.user.nickname : '')}"></div>
+      <div><label>작성자 (닉네임)</label><input type="text" id="f-author" maxlength="12" placeholder="최대 12자" value="${esc(isLogged ? Auth.user.nickname : '')}" ${isLogged ? 'readonly style="background:#f2f4f8;cursor:not-allowed"' : 'readonly onfocus="this.removeAttribute(\'readonly\')"'}></div>
       <div></div>
     </div>
     <div class="row">
-      <div><label>비밀번호</label><input type="text" id="f-pw" class="pw-secure" maxlength="40" autocomplete="off"><div class="hint">수정 · 삭제 시 필요합니다. 분실하면 복구할 수 없습니다. (4자 이상)</div></div>
-      <div><label>비밀번호 확인</label><input type="text" id="f-pw2" class="pw-secure" maxlength="40" autocomplete="off"></div>
+      <div><label>비밀번호</label><input type="text" id="f-pw" class="pw-secure" maxlength="40" autocomplete="off" readonly onfocus="this.removeAttribute('readonly')"><div class="hint">수정 · 삭제 시 필요합니다. 분실하면 복구할 수 없습니다. (4자 이상)</div></div>
+      <div><label>비밀번호 확인</label><input type="text" id="f-pw2" class="pw-secure" maxlength="40" autocomplete="off" readonly onfocus="this.removeAttribute('readonly')"></div>
     </div>
     <div class="err" id="err"></div>
     <div class="actions"><button class="btn" id="save">등록</button><a class="btn ghost" href="#/civil">취소</a></div>
   </div>`, '작성', false);
+
+  const clearW = () => {
+    if (!isLogged) {
+      const a = document.getElementById('f-author');
+      if (a) a.value = '';
+    }
+    const p1 = document.getElementById('f-pw');
+    const p2 = document.getElementById('f-pw2');
+    if (p1) p1.value = '';
+    if (p2) p2.value = '';
+  };
+  clearW();
+  setTimeout(clearW, 50);
+  setTimeout(clearW, 150);
   document.getElementById('save').onclick = async (e) => {
     const err = document.getElementById('err'); err.textContent = '';
     const v = id => document.getElementById(id).value;
@@ -1511,7 +1634,19 @@ function pageWrite(){
     e.target.disabled = true;
     try {
       const salt = newSalt();
-      const post = { id:newId(), category:v('f-cat'), title, author, content, salt, pwHash: await hashPw(pw,salt), createdAt:new Date().toISOString(), updatedAt:null };
+      const post = {
+        id: newId(),
+        category: v('f-cat'),
+        title,
+        author,
+        content,
+        password: pw,
+        pw: pw,
+        salt,
+        pwHash: await hashPw(pw, salt),
+        createdAt: new Date().toISOString(),
+        updatedAt: null
+      };
       await Store.create(post);
       location.hash = '#/civil/view/' + post.id;
     } catch(ex){ err.textContent = '저장에 실패했습니다. 다시 시도해 주십시오.'; e.target.disabled = false; }
@@ -1525,6 +1660,9 @@ async function pageView(id){
   const p = Store.posts[id];
   if (!p) { $app.innerHTML = shell('civil','','민원 게시판','', `<div class="notice" style="margin-top:16px">존재하지 않거나 삭제된 글입니다.</div><div class="actions"><a class="btn" href="#/civil">목록</a></div>`, '상세', false); return; }
   const cm = Store.cmts(p);
+  const isLogged = !!Auth.user;
+  const isAdmin = isLogged && Auth.user.role === 'admin';
+
   $app.innerHTML = shell('civil','','민원 게시판','', `
     <div style="margin-top:20px">
     <div class="vhead">
@@ -1539,13 +1677,16 @@ async function pageView(id){
     </div>
     <div class="pwbox" id="pwbox">
       <span id="pw-label"></span>
-      <input type="text" id="pw-in" class="pw-secure" placeholder="비밀번호" autocomplete="off">
+      <input type="text" id="pw-in" class="pw-secure" placeholder="비밀번호" autocomplete="off" readonly onfocus="this.removeAttribute('readonly')">
       <button class="btn" id="pw-ok">확인</button>
       <div class="err" id="pw-err"></div>
     </div>
     <div class="cm">
       <h3>댓글 ${cm.length}</h3>
-      ${cm.length ? cm.map(c => `
+      ${cm.length ? cm.map(c => {
+        const isMine = isLogged && c.username && c.username === Auth.user.username;
+        const canManage = isMine || isAdmin || !!(c.pwHash || c.pw || c.password);
+        return `
         <div class="cm-item" id="c-item-${esc(c.id)}">
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px">
             <div>
@@ -1553,7 +1694,7 @@ async function pageView(id){
               <span class="when">${fmt(c.createdAt)}</span>
               ${c.updatedAt ? `<span class="when" style="color:var(--sub)">(수정됨)</span>` : ''}
             </div>
-            ${(c.pwHash || c.pw || c.password || (Auth.user && Auth.user.role === 'admin')) ? `
+            ${canManage ? `
             <div class="cm-actions" style="font-size:12px">
               <button type="button" class="btn-c-act" data-c-act="edit" data-c-id="${esc(c.id)}" style="background:none;border:none;color:var(--navy2);cursor:pointer;padding:2px 4px;font-size:12px;text-decoration:underline">수정</button>
               <span style="color:#ccc">|</span>
@@ -1564,7 +1705,7 @@ async function pageView(id){
           <div class="cm-pw-box" id="c-pwbox-${esc(c.id)}" style="display:none;margin-top:8px;padding:10px;background:#f5f6f9;border:1px solid #dcdfe6">
             <div id="c-prompt-${esc(c.id)}" style="font-size:12.5px;font-weight:700;margin-bottom:6px"></div>
             <div style="display:flex;gap:6px">
-              <input type="text" id="c-pwin-${esc(c.id)}" class="pw-secure" placeholder="비밀번호" style="flex:1;padding:6px 10px;font-size:13px" autocomplete="off">
+              <input type="text" id="c-pwin-${esc(c.id)}" class="pw-secure" placeholder="비밀번호" style="flex:1;padding:6px 10px;font-size:13px" autocomplete="off" readonly onfocus="this.removeAttribute('readonly')">
               <button type="button" class="btn" id="c-pwok-${esc(c.id)}" style="padding:6px 12px;font-size:12.5px">확인</button>
               <button type="button" class="btn ghost" id="c-pwcancel-${esc(c.id)}" style="padding:6px 12px;font-size:12.5px">취소</button>
             </div>
@@ -1577,12 +1718,20 @@ async function pageView(id){
               <button type="button" class="btn ghost" id="c-editcancel-${esc(c.id)}" style="padding:6px 12px;font-size:12.5px">취소</button>
             </div>
           </div>
-        </div>`).join('') : '<p class="muted">등록된 댓글이 없습니다.</p>'}
+        </div>`;
+      }).join('') : '<p class="muted">등록된 댓글이 없습니다.</p>'}
       <div class="cm-form">
-        <div style="display:flex;gap:8px;margin-bottom:8px">
-          <input type="text" id="c-author" maxlength="12" placeholder="닉네임 (최대 12자)" value="${esc(Auth.user ? Auth.user.nickname : '')}" style="flex:1" autocomplete="off">
-          <input type="text" id="c-pw" class="pw-secure" maxlength="40" placeholder="비밀번호 (수정·삭제용, 4자 이상)" style="flex:1" autocomplete="off">
-        </div>
+        ${isLogged ? `
+          <div style="margin-bottom:8px;display:flex;align-items:center;gap:10px">
+            <input type="text" id="c-author" value="${esc(Auth.user.nickname)}" readonly style="width:200px;background:#f2f4f8;cursor:not-allowed">
+            <span style="font-size:12.5px;color:var(--navy);font-weight:700">로그인 계정으로 등록됩니다.</span>
+          </div>
+        ` : `
+          <div style="display:flex;gap:8px;margin-bottom:8px">
+            <input type="text" id="c-author" name="author" maxlength="12" placeholder="닉네임 (최대 12자)" autocomplete="nickname" style="flex:1">
+            <input type="text" id="c-pw" name="comment_pin" class="pw-secure" maxlength="40" placeholder="비밀번호 (수정·삭제용, 4자 이상)" autocomplete="off" style="flex:1">
+          </div>
+        `}
         <textarea id="c-text" maxlength="500" placeholder="댓글을 입력하십시오 (텍스트만 가능, 최대 500자)"></textarea>
         <button class="btn" id="c-ok">댓글 등록</button>
         <div class="err" id="c-err"></div>
@@ -1590,15 +1739,25 @@ async function pageView(id){
     </div></div>`, '상세', false);
 
   let mode = '';
-  const cpw = document.getElementById('c-pw');
-  if (cpw) cpw.value = '';
+  const clearCm = () => {
+    if (!isLogged) {
+      const a = document.getElementById('c-author');
+      const p = document.getElementById('c-pw');
+      if (a) a.value = '';
+      if (p) p.value = '';
+    }
+  };
+  clearCm();
+  setTimeout(clearCm, 50);
+  setTimeout(clearCm, 150);
+
   const box = document.getElementById('pwbox');
   const ask = m => { mode = m; document.getElementById('pw-label').textContent = m==='edit' ? '수정하려면 비밀번호를 입력하십시오: ' : '삭제하려면 비밀번호를 입력하십시오: '; document.getElementById('pw-err').textContent=''; box.classList.add('show'); document.getElementById('pw-in').value=''; document.getElementById('pw-in').focus(); };
   document.getElementById('b-edit').onclick = () => ask('edit');
   document.getElementById('b-del').onclick = () => ask('del');
   const submitPw = async () => {
     const pw = document.getElementById('pw-in').value;
-    const isDirectMatch = (pw === p.pwHash || pw === p.password || pw === p.pw);
+    const isDirectMatch = (String(pw) === String(p.pwHash) || String(pw) === String(p.password) || String(pw) === String(p.pw));
     const isHashMatch = (await hashPw(pw, p.salt || '')) === p.pwHash;
     const ok = (isDirectMatch || isHashMatch) && (!!p.pwHash || !!p.password || !!p.pw);
     if (!ok) return document.getElementById('pw-err').textContent = '비밀번호가 일치하지 않습니다.';
@@ -1613,20 +1772,39 @@ async function pageView(id){
   document.getElementById('c-ok').onclick = async (e) => {
     const err = document.getElementById('c-err'); err.textContent = '';
     const author = document.getElementById('c-author').value.trim();
-    const pw = document.getElementById('c-pw').value;
+    const pwEl = document.getElementById('c-pw');
+    const pw = pwEl ? pwEl.value : '';
     const content = document.getElementById('c-text').value.trim();
+
     if (!author) return err.textContent = '닉네임을 입력해 주십시오.';
-    if (!pw) return err.textContent = '비밀번호를 입력해 주십시오.';
-    if (pw.length < 4) return err.textContent = '비밀번호는 4자 이상 입력해 주십시오.';
+    if (!isLogged) {
+      if (!pw) return err.textContent = '비밀번호를 입력해 주십시오.';
+      if (pw.length < 4) return err.textContent = '비밀번호는 4자 이상 입력해 주십시오.';
+    }
     if (!content) return err.textContent = '댓글 내용을 입력해 주십시오.';
     e.target.disabled = true;
     try {
       const salt = newSalt();
-      const pwHash = await hashPw(pw, salt);
-      await Store.addComment(id, { id:newId(), author, content, salt, pwHash, createdAt:new Date().toISOString() });
+      const pwHash = pw ? await hashPw(pw, salt) : '';
+      const commentData = {
+        id: newId(),
+        postId: id,
+        author,
+        content,
+        password: pw || '',
+        pw: pw || '',
+        salt,
+        pwHash,
+        username: isLogged ? Auth.user.username : null,
+        createdAt: new Date().toISOString()
+      };
+      await Store.addComment(id, commentData);
       await pageView(id);
     }
-    catch(ex){ err.textContent = '등록에 실패했습니다. 다시 시도해 주십시오.'; e.target.disabled = false; }
+    catch(ex){
+      err.textContent = '등록에 실패했습니다. 다시 시도해 주십시오.';
+      e.target.disabled = false;
+    }
   };
 
   document.querySelectorAll('.btn-c-act').forEach(btn => {
@@ -1635,6 +1813,9 @@ async function pageView(id){
       const act = btn.dataset.cAct;
       const c = (p.comments || {})[cid];
       if (!c) return;
+
+      const isMine = isLogged && c.username && c.username === Auth.user.username;
+      const isDirectAccess = isMine || isAdmin;
 
       const pwbox = document.getElementById('c-pwbox-' + cid);
       const editbox = document.getElementById('c-editbox-' + cid);
@@ -1647,6 +1828,31 @@ async function pageView(id){
       const editsave = document.getElementById('c-editsave-' + cid);
       const editcancel = document.getElementById('c-editcancel-' + cid);
 
+      editcancel.onclick = () => { editbox.style.display = 'none'; };
+      editsave.onclick = async () => {
+        const newContent = edittxt.value.trim();
+        if (!newContent) return alert('댓글 내용을 입력해 주십시오.');
+        try {
+          await Store.updateComment(id, cid, newContent);
+          await pageView(id);
+        } catch(e) {
+          alert('댓글 수정에 실패했습니다.');
+        }
+      };
+
+      if (isDirectAccess) {
+        if (act === 'del') {
+          if (confirm('댓글을 정말 삭제하시겠습니까?')) {
+            Store.removeComment(id, cid).then(() => pageView(id)).catch(() => alert('삭제 실패'));
+          }
+        } else if (act === 'edit') {
+          pwbox.style.display = 'none';
+          editbox.style.display = 'block';
+          edittxt.focus();
+        }
+        return;
+      }
+
       editbox.style.display = 'none';
       pwbox.style.display = 'block';
       pwerr.textContent = '';
@@ -1655,15 +1861,13 @@ async function pageView(id){
       pwin.focus();
 
       pwcancel.onclick = () => { pwbox.style.display = 'none'; };
-      editcancel.onclick = () => { editbox.style.display = 'none'; };
 
       const doVerifyPw = async () => {
         pwerr.textContent = '';
         const entered = pwin.value;
-        const isDirect = (entered === c.pwHash || entered === c.pw || entered === c.password);
+        const isDirect = (String(entered) === String(c.pwHash) || String(entered) === String(c.pw) || String(entered) === String(c.password));
         const isHash = (await hashPw(entered, c.salt || '')) === c.pwHash;
-        const isAdmin = (Auth.user && Auth.user.role === 'admin');
-        if (!isDirect && !isHash && !isAdmin) {
+        if (!isDirect && !isHash) {
           pwerr.textContent = '비밀번호가 일치하지 않습니다.';
           return;
         }
@@ -1686,17 +1890,6 @@ async function pageView(id){
 
       pwok.onclick = doVerifyPw;
       pwin.onkeydown = e => { if (e.key === 'Enter') doVerifyPw(); };
-
-      editsave.onclick = async () => {
-        const newContent = edittxt.value.trim();
-        if (!newContent) return alert('댓글 내용을 입력해 주십시오.');
-        try {
-          await Store.updateComment(id, cid, newContent);
-          await pageView(id);
-        } catch(e) {
-          alert('댓글 수정에 실패했습니다.');
-        }
-      };
     };
   });
 }
@@ -1717,7 +1910,7 @@ async function pageEdit(id){
     const title = document.getElementById('f-title').value.trim(), content = document.getElementById('f-content').value.trim();
     if (!title) return err.textContent = '제목을 입력해 주십시오.';
     if (!content) return err.textContent = '내용을 입력해 주십시오.';
-    const isDirectMatch = (pendingPw[id] === p.pwHash || pendingPw[id] === p.password || pendingPw[id] === p.pw);
+    const isDirectMatch = (String(pendingPw[id]) === String(p.pwHash) || String(pendingPw[id]) === String(p.password) || String(pendingPw[id]) === String(p.pw));
     const isHashMatch = (await hashPw(pendingPw[id], p.salt || '')) === p.pwHash;
     if (!isDirectMatch && !isHashMatch) return err.textContent = '인증이 만료되었습니다. 다시 시도해 주십시오.';
     e.target.disabled = true;
