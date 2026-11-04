@@ -155,6 +155,7 @@ table.board{width:100%;border-collapse:collapse;border-top:2px solid var(--navy)
 /* 폼 */
 .form label{display:block;font-weight:700;margin:16px 0 6px}
 .form input[type=text],.form input[type=password],.form select,.form textarea{width:100%;border:1px solid #aab3c4;padding:9px 12px;background:#fff}
+.pw-secure{-webkit-text-security:disc!important}
 input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus,input:-webkit-autofill:active{-webkit-box-shadow:0 0 0 30px #fff inset!important;-webkit-text-fill-color:var(--txt)!important}
 .form textarea{min-height:240px;resize:vertical}
 .form .row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
@@ -1110,15 +1111,11 @@ function pageLogin(){
     <div style="max-width:420px;margin:24px auto;border:1px solid var(--line);padding:30px 24px;background:#fff">
       <h2 style="font-size:20px;color:var(--navy);margin-bottom:20px;text-align:center">누리집 로그인</h2>
       <div class="form">
-        <div style="position:absolute;left:-9999px;top:-9999px;opacity:0" aria-hidden="true">
-          <input type="text" tabindex="-1">
-          <input type="password" tabindex="-1">
-        </div>
         <label>아이디</label>
-        <input type="text" id="l-user" placeholder="영문 및 숫자 입력" autocomplete="off" readonly onfocus="this.removeAttribute('readonly')">
+        <input type="text" id="l-user" placeholder="영문 및 숫자 입력" autocomplete="off">
         <div class="caps-bubble" id="l-user-caps">⚠️ &lt;Caps Lock&gt;이 켜져 있습니다. (대소문자 구분)</div>
         <label style="margin-top:14px">비밀번호</label>
-        <input type="password" id="l-pw" placeholder="비밀번호를 입력하세요" autocomplete="new-password" readonly onfocus="this.removeAttribute('readonly')">
+        <input type="text" id="l-pw" class="pw-secure" placeholder="비밀번호를 입력하세요" autocomplete="off">
         <div class="caps-bubble" id="l-pw-caps">⚠️ &lt;Caps Lock&gt;이 켜져 있습니다.</div>
         <div class="err" id="l-err"></div>
         <button class="btn" id="btn-do-login" style="width:100%;margin-top:16px;padding:12px 0;font-weight:700">로그인</button>
@@ -1176,13 +1173,9 @@ function pageRegister(){
     <div style="max-width:480px;margin:24px auto;border:1px solid var(--line);padding:30px 24px;background:#fff">
       <h2 style="font-size:20px;color:var(--navy);margin-bottom:20px;text-align:center">신규 회원가입</h2>
       <div class="form">
-        <div style="position:absolute;left:-9999px;top:-9999px;opacity:0" aria-hidden="true">
-          <input type="text" tabindex="-1">
-          <input type="password" tabindex="-1">
-        </div>
         <label>아이디 (영문·숫자 4~16자)</label>
         <div style="display:flex;gap:6px">
-          <input type="text" id="r-user" maxlength="16" placeholder="영문, 숫자만 입력 가능" autocomplete="off" readonly onfocus="this.removeAttribute('readonly')" style="flex:1">
+          <input type="text" id="r-user" maxlength="16" placeholder="영문, 숫자만 입력 가능" autocomplete="off" style="flex:1">
           <button type="button" class="btn ghost" id="btn-chk-user" style="padding:8px 14px;white-space:nowrap;font-size:13.5px">중복확인</button>
         </div>
         <div class="caps-bubble" id="r-user-caps">⚠️ &lt;Caps Lock&gt;이 켜져 있습니다. (대소문자 구분)</div>
@@ -1190,18 +1183,18 @@ function pageRegister(){
 
         <label>닉네임 (2~12자)</label>
         <div style="display:flex;gap:6px">
-          <input type="text" id="r-nick" maxlength="12" placeholder="한글, 영문, 숫자, 한자 등 (특수문자 불가)" autocomplete="off" readonly onfocus="this.removeAttribute('readonly')" style="flex:1">
+          <input type="text" id="r-nick" maxlength="12" placeholder="한글, 영문, 숫자, 한자 등 (특수문자 불가)" autocomplete="off" style="flex:1">
           <button type="button" class="btn ghost" id="btn-chk-nick" style="padding:8px 14px;white-space:nowrap;font-size:13.5px">중복확인</button>
         </div>
         <div id="r-nick-msg" style="font-size:13px;min-height:22px;margin:4px 0"></div>
 
         <label>비밀번호 (영문·숫자·특수문자 4자 이상)</label>
-        <input type="password" id="r-pw" maxlength="40" placeholder="영문, 숫자, 특수문자 조합" autocomplete="new-password" readonly onfocus="this.removeAttribute('readonly')">
+        <input type="text" id="r-pw" class="pw-secure" maxlength="40" placeholder="영문, 숫자, 특수문자 조합" autocomplete="off">
         <div class="caps-bubble" id="r-pw-caps">⚠️ &lt;Caps Lock&gt;이 켜져 있습니다.</div>
         <div id="r-pw-msg" style="font-size:13px;min-height:20px;margin:4px 0"></div>
         
         <label style="margin-top:10px">비밀번호 확인</label>
-        <input type="password" id="r-pw2" maxlength="40" autocomplete="new-password" readonly onfocus="this.removeAttribute('readonly')">
+        <input type="text" id="r-pw2" class="pw-secure" maxlength="40" autocomplete="off">
         <div class="caps-bubble" id="r-pw2-caps">⚠️ &lt;Caps Lock&gt;이 켜져 있습니다.</div>
         
         <div class="err" id="r-err"></div>
@@ -1500,8 +1493,8 @@ function pageWrite(){
       <div></div>
     </div>
     <div class="row">
-      <div><label>비밀번호</label><input type="password" id="f-pw" maxlength="40" autocomplete="new-password"><div class="hint">수정 · 삭제 시 필요합니다. 분실하면 복구할 수 없습니다. (4자 이상)</div></div>
-      <div><label>비밀번호 확인</label><input type="password" id="f-pw2" maxlength="40" autocomplete="new-password"></div>
+      <div><label>비밀번호</label><input type="text" id="f-pw" class="pw-secure" maxlength="40" autocomplete="off"><div class="hint">수정 · 삭제 시 필요합니다. 분실하면 복구할 수 없습니다. (4자 이상)</div></div>
+      <div><label>비밀번호 확인</label><input type="text" id="f-pw2" class="pw-secure" maxlength="40" autocomplete="off"></div>
     </div>
     <div class="err" id="err"></div>
     <div class="actions"><button class="btn" id="save">등록</button><a class="btn ghost" href="#/civil">취소</a></div>
@@ -1546,7 +1539,7 @@ async function pageView(id){
     </div>
     <div class="pwbox" id="pwbox">
       <span id="pw-label"></span>
-      <input type="password" id="pw-in" placeholder="비밀번호" autocomplete="off">
+      <input type="text" id="pw-in" class="pw-secure" placeholder="비밀번호" autocomplete="off">
       <button class="btn" id="pw-ok">확인</button>
       <div class="err" id="pw-err"></div>
     </div>
@@ -1571,7 +1564,7 @@ async function pageView(id){
           <div class="cm-pw-box" id="c-pwbox-${esc(c.id)}" style="display:none;margin-top:8px;padding:10px;background:#f5f6f9;border:1px solid #dcdfe6">
             <div id="c-prompt-${esc(c.id)}" style="font-size:12.5px;font-weight:700;margin-bottom:6px"></div>
             <div style="display:flex;gap:6px">
-              <input type="password" id="c-pwin-${esc(c.id)}" placeholder="비밀번호" style="flex:1;padding:6px 10px;font-size:13px" autocomplete="off">
+              <input type="text" id="c-pwin-${esc(c.id)}" class="pw-secure" placeholder="비밀번호" style="flex:1;padding:6px 10px;font-size:13px" autocomplete="off">
               <button type="button" class="btn" id="c-pwok-${esc(c.id)}" style="padding:6px 12px;font-size:12.5px">확인</button>
               <button type="button" class="btn ghost" id="c-pwcancel-${esc(c.id)}" style="padding:6px 12px;font-size:12.5px">취소</button>
             </div>
@@ -1588,7 +1581,7 @@ async function pageView(id){
       <div class="cm-form">
         <div style="display:flex;gap:8px;margin-bottom:8px">
           <input type="text" id="c-author" maxlength="12" placeholder="닉네임 (최대 12자)" value="${esc(Auth.user ? Auth.user.nickname : '')}" style="flex:1" autocomplete="off">
-          <input type="password" id="c-pw" maxlength="40" placeholder="비밀번호 (수정·삭제용, 4자 이상)" style="flex:1" autocomplete="off">
+          <input type="text" id="c-pw" class="pw-secure" maxlength="40" placeholder="비밀번호 (수정·삭제용, 4자 이상)" style="flex:1" autocomplete="off">
         </div>
         <textarea id="c-text" maxlength="500" placeholder="댓글을 입력하십시오 (텍스트만 가능, 최대 500자)"></textarea>
         <button class="btn" id="c-ok">댓글 등록</button>
@@ -1597,6 +1590,8 @@ async function pageView(id){
     </div></div>`, '상세', false);
 
   let mode = '';
+  const cpw = document.getElementById('c-pw');
+  if (cpw) cpw.value = '';
   const box = document.getElementById('pwbox');
   const ask = m => { mode = m; document.getElementById('pw-label').textContent = m==='edit' ? '수정하려면 비밀번호를 입력하십시오: ' : '삭제하려면 비밀번호를 입력하십시오: '; document.getElementById('pw-err').textContent=''; box.classList.add('show'); document.getElementById('pw-in').value=''; document.getElementById('pw-in').focus(); };
   document.getElementById('b-edit').onclick = () => ask('edit');
