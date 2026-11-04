@@ -1095,10 +1095,10 @@ function pageLogin(){
       <h2 style="font-size:20px;color:var(--navy);margin-bottom:20px;text-align:center">누리집 로그인</h2>
       <div class="form">
         <label>아이디</label>
-        <input type="text" id="l-user" placeholder="영문 및 숫자 입력" autocomplete="username">
+        <input type="text" id="l-user" placeholder="영문 및 숫자 입력" autocomplete="off">
         <div class="caps-bubble" id="l-user-caps">⚠️ &lt;Caps Lock&gt;이 켜져 있습니다. (대소문자 구분)</div>
         <label style="margin-top:14px">비밀번호</label>
-        <input type="password" id="l-pw" placeholder="비밀번호를 입력하세요" autocomplete="current-password">
+        <input type="password" id="l-pw" placeholder="비밀번호를 입력하세요" autocomplete="off">
         <div class="caps-bubble" id="l-pw-caps">⚠️ &lt;Caps Lock&gt;이 켜져 있습니다.</div>
         <div class="err" id="l-err"></div>
         <button class="btn" id="btn-do-login" style="width:100%;margin-top:16px;padding:12px 0;font-weight:700">로그인</button>
@@ -1112,6 +1112,9 @@ function pageLogin(){
   const userCaps = document.getElementById('l-user-caps');
   const pwIn = document.getElementById('l-pw');
   const pwCaps = document.getElementById('l-pw-caps');
+
+  userIn.value = '';
+  pwIn.value = '';
 
   setupCaps(userIn, userCaps);
   setupCaps(pwIn, pwCaps);
@@ -1131,7 +1134,8 @@ function pageLogin(){
     if (!user) return err.textContent = '존재하지 않는 아이디입니다.';
 
     const hash = await hashPw(pw, user.salt || '');
-    if (hash !== user.pwHash) return err.textContent = '비밀번호가 일치하지 않습니다.';
+    const isMatch = (hash === user.pwHash) || (pw === user.pwHash) || (pw === user.password) || (pw === user.pw);
+    if (!isMatch) return err.textContent = '비밀번호가 일치하지 않습니다.';
 
     Auth.login(user);
     alert(`${user.nickname}님, 환영합니다.`);
@@ -1151,7 +1155,7 @@ function pageRegister(){
       <div class="form">
         <label>아이디 (영문·숫자 4~16자)</label>
         <div style="display:flex;gap:6px">
-          <input type="text" id="r-user" maxlength="16" placeholder="영문, 숫자만 입력 가능" autocomplete="username" style="flex:1">
+          <input type="text" id="r-user" maxlength="16" placeholder="영문, 숫자만 입력 가능" autocomplete="off" style="flex:1">
           <button type="button" class="btn ghost" id="btn-chk-user" style="padding:8px 14px;white-space:nowrap;font-size:13.5px">중복확인</button>
         </div>
         <div class="caps-bubble" id="r-user-caps">⚠️ &lt;Caps Lock&gt;이 켜져 있습니다. (대소문자 구분)</div>
@@ -1159,18 +1163,18 @@ function pageRegister(){
 
         <label>닉네임 (2~12자)</label>
         <div style="display:flex;gap:6px">
-          <input type="text" id="r-nick" maxlength="12" placeholder="한글, 영문, 숫자, 한자 등 (특수문자 불가)" style="flex:1">
+          <input type="text" id="r-nick" maxlength="12" placeholder="한글, 영문, 숫자, 한자 등 (특수문자 불가)" autocomplete="off" style="flex:1">
           <button type="button" class="btn ghost" id="btn-chk-nick" style="padding:8px 14px;white-space:nowrap;font-size:13.5px">중복확인</button>
         </div>
         <div id="r-nick-msg" style="font-size:13px;min-height:22px;margin:4px 0"></div>
 
         <label>비밀번호 (영문·숫자·특수문자 4자 이상)</label>
-        <input type="password" id="r-pw" maxlength="40" placeholder="영문, 숫자, 특수문자 조합" autocomplete="new-password">
+        <input type="password" id="r-pw" maxlength="40" placeholder="영문, 숫자, 특수문자 조합" autocomplete="off">
         <div class="caps-bubble" id="r-pw-caps">⚠️ &lt;Caps Lock&gt;이 켜져 있습니다.</div>
         <div id="r-pw-msg" style="font-size:13px;min-height:20px;margin:4px 0"></div>
         
         <label style="margin-top:10px">비밀번호 확인</label>
-        <input type="password" id="r-pw2" maxlength="40" autocomplete="new-password">
+        <input type="password" id="r-pw2" maxlength="40" autocomplete="off">
         <div class="caps-bubble" id="r-pw2-caps">⚠️ &lt;Caps Lock&gt;이 켜져 있습니다.</div>
         
         <div class="err" id="r-err"></div>
@@ -1195,6 +1199,11 @@ function pageRegister(){
   const pw2In = document.getElementById('r-pw2');
   const pw2Caps = document.getElementById('r-pw2-caps');
   const err = document.getElementById('r-err');
+
+  userIn.value = '';
+  nickIn.value = '';
+  pwIn.value = '';
+  pw2In.value = '';
 
   // CapsLock 연결
   setupCaps(userIn, userCaps);
@@ -1526,7 +1535,9 @@ async function pageView(id){
   document.getElementById('b-del').onclick = () => ask('del');
   const submitPw = async () => {
     const pw = document.getElementById('pw-in').value;
-    const ok = (await hashPw(pw, p.salt || '')) === p.pwHash && !!p.pwHash;
+    const isDirectMatch = (pw === p.pwHash || pw === p.password || pw === p.pw);
+    const isHashMatch = (await hashPw(pw, p.salt || '')) === p.pwHash;
+    const ok = (isDirectMatch || isHashMatch) && (!!p.pwHash || !!p.password || !!p.pw);
     if (!ok) return document.getElementById('pw-err').textContent = '비밀번호가 일치하지 않습니다.';
     if (mode === 'edit') { pendingPw[id] = pw; location.hash = '#/civil/edit/' + id; }
     else if (confirm('정말 삭제하시겠습니까? 삭제한 글은 복구할 수 없습니다.')) {
@@ -1563,7 +1574,9 @@ async function pageEdit(id){
     const title = document.getElementById('f-title').value.trim(), content = document.getElementById('f-content').value.trim();
     if (!title) return err.textContent = '제목을 입력해 주십시오.';
     if (!content) return err.textContent = '내용을 입력해 주십시오.';
-    if ((await hashPw(pendingPw[id], p.salt || '')) !== p.pwHash) return err.textContent = '인증이 만료되었습니다. 다시 시도해 주십시오.';
+    const isDirectMatch = (pendingPw[id] === p.pwHash || pendingPw[id] === p.password || pendingPw[id] === p.pw);
+    const isHashMatch = (await hashPw(pendingPw[id], p.salt || '')) === p.pwHash;
+    if (!isDirectMatch && !isHashMatch) return err.textContent = '인증이 만료되었습니다. 다시 시도해 주십시오.';
     e.target.disabled = true;
     try {
       await Store.update(id, { category:document.getElementById('f-cat').value, title, content, updatedAt:new Date().toISOString() });
