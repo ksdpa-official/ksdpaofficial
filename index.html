@@ -1720,7 +1720,7 @@ async function pageView(id){
     const err = document.getElementById('c-err'); err.textContent = '';
     const author = document.getElementById('c-author').value.trim();
     const pwEl = document.getElementById('c-pw');
-    const pw = pwEl ? pwEl.value : '';
+    const pw = pwEl ? pwEl.value.trim() : '';
     const content = document.getElementById('c-text').value.trim();
 
     if (!author) return err.textContent = '닉네임을 입력해 주십시오.';
@@ -1729,7 +1729,9 @@ async function pageView(id){
       if (pw.length < 4) return err.textContent = '비밀번호는 4자 이상 입력해 주십시오.';
     }
     if (!content) return err.textContent = '댓글 내용을 입력해 주십시오.';
+
     e.target.disabled = true;
+    e.target.textContent = '등록 중...';
     try {
       const salt = newSalt();
       const pwHash = pw ? await hashPw(pw, salt) : '';
@@ -1749,8 +1751,10 @@ async function pageView(id){
       await pageView(id);
     }
     catch(ex){
-      err.textContent = '등록에 실패했습니다. 다시 시도해 주십시오.';
+      console.error('Comment submit error:', ex);
+      err.textContent = '등록에 실패했습니다: ' + (ex.message || '네트워크 오류');
       e.target.disabled = false;
+      e.target.textContent = '댓글 등록';
     }
   };
 
