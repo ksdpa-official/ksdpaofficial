@@ -755,7 +755,7 @@ const PEOPLE = {
     {name:'소이', age:24, sex:'여성', role:'현장관제', photo:'증명사진_10.한소이.webp'}
   ],
   special:     [{name:'한지우', age:33, sex:'남성', role:'팀장', photo:'증명사진.7_한지우.webp'}],
-  support:     [{name:'HS-0914-Ω', age:24, sex:'여성', role:'환경요원', photo:'증명사진_12.HS-0914-Ω.webp'}],
+  support:     [{name:'HS-0914-Ω', nameGlitch:true, age:24, sex:'여성', role:'환경요원', photo:'증명사진_12.HS-0914-Ω.webp'}],
   audit:       [{name:'윤가희', age:28, sex:'여성', role:'팀장', photo:'증명사진_8.윤가희.webp'}]
 };
 PEOPLE.field1 = PEOPLE.field;
@@ -763,7 +763,8 @@ PEOPLE.field2 = PEOPLE.special_ops;
 const person = m => {
   if (m.hidden) return `<div class="pc"><div class="ph">${m.photo ? `<img src="${esc(m.photo)}" alt="">` : G(4)}</div><div><div class="pn">${G(3)}</div><div class="pm">${G(3)} · ${G(2)}</div><div class="pr">${esc(m.role)}</div></div></div>`;
   if (m.blank) return `<div class="pc"><div class="ph"><span>공석</span></div><div><div class="pn" style="color:var(--sub)">공백</div><div class="pm">인적사항 미등록</div><div class="pr">${esc(m.role || '팀장')}</div></div></div>`;
-  return `<div class="pc"><div class="ph">${m.photo ? `<img src="${esc(m.photo)}" alt="">` : '<span>증명사진</span>'}</div><div><div class="pn">${esc(m.name)}</div><div class="pm">${m.age}세 · ${m.sex}</div><div class="pr">${esc(m.role)}</div></div></div>`;
+  const nameHtml = m.nameGlitch ? G(4) : esc(m.name);
+  return `<div class="pc"><div class="ph">${m.photo ? `<img src="${esc(m.photo)}" alt="">` : '<span>증명사진</span>'}</div><div><div class="pn">${nameHtml}</div><div class="pm">${m.age}세 · ${m.sex}</div><div class="pr">${esc(m.role)}</div></div></div>`;
 };
 const people = list => `<div class="pgrid">${list.map(person).join('')}</div>`;
 
@@ -849,7 +850,7 @@ const PAGES = {
           <div class="box top">청장</div>
           <div class="row">
             <a class="box" href="#/about/field">현장대응과<div class="muted" style="font-weight:400;font-size:13px">통제 · 대피 · 회수</div></a>
-            <a class="box" href="#/about/special_ops">현장특임과<div class="muted" style="font-weight:400;font-size:13px">특수대응 · 위험배제 · 진압</div></a>
+            <a class="box" href="#/about/special_ops">현장특임과<div class="muted" style="font-weight:400;font-size:13px">특별대응 · 안전확보 · 정밀수습</div></a>
             <a class="box" href="#/about/research">분석연구과<div class="muted" style="font-weight:400;font-size:13px">물질분석 · 장비개발 · 특수연구</div></a>
             <a class="box" href="#/about/public">정보지원과<div class="muted" style="font-weight:400;font-size:13px">통합관제 · 신호제어 · 안전안내</div></a>
             <a class="box" href="#/about/special">특별관리과<div class="muted" style="font-weight:400;font-size:13px">자원관리 · 시설보존 · 정밀보관</div></a>
@@ -860,7 +861,7 @@ const PAGES = {
         <p class="muted" style="margin-top:14px;font-size:13.5px;text-align:center">각 부서를 선택하면 소속 인원을 확인할 수 있습니다.</p>
       </section>` },
     field: orgPage('field','현장대응과','관내 발생하는 비정형 특수 안전사고 현장에 신속 출동하여 주민 안전을 확보하고 현장을 수습하는 부서입니다.',['특수 안전사고 현장 1차 통제선 설치 및 주민 안전 대피 유도','원인 미상 위험 요인의 안전 격리 및 핵심 표본 회수','특수 장비 보안 및 안전 수칙에 따른 현장 운용 관리','현장 위험요소 1차 차단 및 상황 수습 결과 보고']),
-    special_ops: orgPage('special_ops','현장특임과','일반적 수단으로 통제가 불가능한 고위험 재난 사태에 긴급 투입되어 위험 요소를 완전히 배제하고 상황을 종결하는 특수 대응 부서입니다.',['통제 기준을 초과한 고위험 재난 구역 비상 기동 투입','대규모 인명 피해 방지를 위한 중대 위험 요소 완전 무력화 조치','원거리 관측 정밀 대응 및 전술 기동 진압 작전 수행','현장 최종 안전 구역 확보 및 상황 종결 조치']),
+    special_ops: orgPage('special_ops','현장특임과','특수 재난 환경 발생 시 전문 장비와 정밀 기동을 바탕으로 현장 안전을 신속히 확보하고 최종 수습을 전담하는 특별 대응 부서입니다.',['특수 환경 재난 구역 긴급 전개 및 정밀 안전 통제','대규모 2차 피해 예방을 위한 취약 요인 선제적 차단 조치','원거리 안전 관측 정밀 지원 및 특수 기동 안전 작전 수행','비상 대응 구역 최종 안전선 설정 및 상황 정상화 조치']),
     research: orgPage('research','분석연구과','사고 원인 물질의 물리·생체 특성을 정밀 분석하고 대응 장비 및 특수 기술을 연구·개발하는 부서입니다.',['특수 재난 잔류 물질 및 미상 생체 표본의 정밀 성분 분석','특수 환경 전용 방호 장비 및 첨단 진압 기기 연구·개발','특수 적합성 인력 대상 생체 반응 개선 및 기술 지원 연구','현장 대응 요원 신체 안정화 및 특수 역학 지원']),
     public: orgPage('public','정보지원과','청사 종합관제 시스템을 운영하며, 현장과 시민에게 실시간 교통·안전 정보를 안내하고 비상 상황을 조율하는 부서입니다.',['청사 통합 관제 시스템 운영 및 재난 구역 실시간 모니터링','공공 인프라(신호·통신망) 비상 관제 및 교통 흐름 조정 지원','재난 발생 시 시민 안전 대피 경로 및 보도 자료 제공','현장 출동 인력에 대한 비상 통신망 지원 및 지령 전파']),
     special: orgPage('special','특별관리과','특수 보호 대상 인력 및 고위험 자원을 보호·관리하며, 정밀 보존 시설을 운영하고 중요 기록을 영구 보존하는 부서입니다.',['특수 보호 대상 인력에 대한 안전 관리 및 상태 관찰','특수 생체 신호 해석 및 심층 상태 데이터 모니터링','초저온 특수 보존 시설(실린더 보관소) 운영 및 정밀 자원 관리','비공개 중요 재난 기록물 및 기밀 자료의 영구 보존']),
@@ -992,7 +993,7 @@ const PAGES = {
         <table class="board"><thead><tr><th style="width:140px">부서</th><th>담당 업무</th></tr></thead><tbody>
           <tr><td><b>청장</b></td><td class="t">특수재난경찰청 총괄 · 정부 및 관계 기관 협조 · 대외 공개 범위 최종 결정</td></tr>
           <tr><td><b><a href="#/about/field">현장대응과</a></b></td><td class="t">비정형 특수 안전사고 현장 통제 · 주민 안전 대피 유도 · 미상 표본 회수 및 1차 수습</td></tr>
-          <tr><td><b><a href="#/about/special_ops">현장특임과</a></b></td><td class="t">고위험 비상 사태 긴급 기동 투입 · 중대 위험 요인 강제 배제 및 완전 무력화 조치</td></tr>
+          <tr><td><b><a href="#/about/special_ops">현장특임과</a></b></td><td class="t">특수 환경 재난 구역 긴급 기동 전개 · 취약 요인 선제 차단 및 현장 상황 정상화 조치</td></tr>
           <tr><td><b><a href="#/about/research">분석연구과</a></b></td><td class="t">사고 원인 물질 정밀 분석 · 특수 대응 장비 연구 개발 · 현장 인력 생체 적합 기술 지원</td></tr>
           <tr><td><b><a href="#/about/public">정보지원과</a></b></td><td class="t">청사 통합 관제 시스템 운영 · 공공 인프라 비상 조정 · 실시간 안전 대피 경로 안내</td></tr>
           <tr><td><b><a href="#/about/special">특별관리과</a></b></td><td class="t">특수 보호 대상 인력 관리 · 초저온 특수 보존 시설(실린더) 운영 · 중요 기록 영구 보존</td></tr>
