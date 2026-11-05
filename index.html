@@ -84,7 +84,10 @@ main{min-height:60vh}
 .dept b{margin-right:8px;color:var(--navy)}
 
 /* 지지직 글리치 */
-.glitch{font-family:Consolas,'Courier New',monospace;color:var(--navy);letter-spacing:1px;font-weight:700;white-space:nowrap}
+.glitch{font-family:Consolas,'Courier New',monospace;color:var(--navy);letter-spacing:1.5px;font-weight:800;white-space:nowrap;display:inline-block;text-shadow:0 0 3px rgba(31,63,133,0.5),-1px 0 2px rgba(230,30,30,0.4),1px 0 2px rgba(0,180,240,0.4);animation:glitchFlicker 1.2s infinite ease-in-out}
+@keyframes glitchFlicker{0%,100%{text-shadow:0 0 3px rgba(31,63,133,0.6),-1.2px 0 2px rgba(230,30,30,0.5),1.2px 0 2px rgba(0,180,240,0.5)}35%{text-shadow:0 0 8px rgba(168,35,42,0.9),2px 0 4px rgba(0,200,255,0.7)}70%{text-shadow:0 0 6px rgba(31,63,133,0.8),-2px 0 3px rgba(255,0,0,0.6)}}
+.g-char-blur{display:inline-block;filter:blur(1.6px);opacity:0.75;text-shadow:0 0 6px currentColor,-2px 0 4px #e61e28,2px 0 4px #00b4f0}
+.ph .glitch{font-size:22px;letter-spacing:4px;text-shadow:0 0 8px rgba(20,40,90,0.8),0 0 16px rgba(168,35,42,0.7)}
 
 /* 오시는 길 */
 .map-wrap{border:1px solid var(--line);background:#fff;position:relative;margin:16px 0 24px}
@@ -309,7 +312,7 @@ const CONFIG = {
 
 /* ---------- 메뉴 구성 (세 번째 값 1 = 하위 항목) ---------- */
 const SECTIONS = {
-  about:  { label:'기관소개',   items:[['','기관소개'],['org','조직소개'],['field','현장대응과',1],['research','분석연구과',1],['special','특별관리과',1],['location','오시는 길']] },
+  about:  { label:'기관소개',   items:[['','기관소개'],['org','조직소개'],['field','현장대응과',1],['special_ops','현장특임과',1],['research','분석연구과',1],['public','정보지원과',1],['special','특별관리과',1],['support','환경지원과',1],['audit','내부감찰과',1],['location','오시는 길']] },
   work:   { label:'주요업무',   items:[['','업무 개요'],['dept','조직별 업무'],['process','재난 대응 절차'],['guide','시민 행동요령']] },
   notice: { label:'알림마당',   items:[['','공지사항'],['press','보도자료'],['safety','안전 정보']] },
   info:   { label:'정보공개',   items:[['','정보공개 안내'],['pre','사전정보공표'],['request','정보공개 청구']] },
@@ -407,12 +410,26 @@ const GL = '$@%^&*#※(){}[]<>/\\|~§¤¶±?!';
 const G = n => `<span class="glitch" data-n="${n}">${'#'.repeat(n)}</span>`;
 function glitchTick(){
   document.querySelectorAll('.glitch').forEach(el => {
-    let s = ''; const n = +el.dataset.n;
-    for (let i=0;i<n;i++) s += GL[Math.floor(Math.random()*GL.length)];
-    el.textContent = s;
+    const n = +el.dataset.n;
+    if (el.closest && el.closest('svg')) {
+      let s = '';
+      for (let i = 0; i < n; i++) s += GL[Math.floor(Math.random() * GL.length)];
+      el.textContent = s;
+      return;
+    }
+    let html = '';
+    for (let i = 0; i < n; i++) {
+      const char = GL[Math.floor(Math.random() * GL.length)];
+      if (Math.random() < 0.35) {
+        html += `<span class="g-char-blur">${char}</span>`;
+      } else {
+        html += char;
+      }
+    }
+    el.innerHTML = html;
   });
 }
-setInterval(glitchTick, 50);
+setInterval(glitchTick, 60);
 
 /* ---------- 데이터 저장소 (JSON) ---------- */
 async function rq(method, path, body){
@@ -439,7 +456,7 @@ const DEFAULT_POSTS = {
     "comments": {
       "cmt_001": {
         "id": "cmt_001",
-        "author": "현장대응과 1팀",
+        "author": "현장대응과",
         "content": "해당 구역은 미상의 특수 누출 위험 요인에 대한 정밀 탐색 및 중화 작업이 진행 중입니다. 금일 14시 부로 1차 정화가 완료될 예정이며, 주민 안전이 확보되는 즉시 통제를 해제하겠습니다. 협조에 감사드립니다.",
         "createdAt": "2026-11-04T01:15:00.000Z"
       }
@@ -719,21 +736,35 @@ const icards = items => `<div class="icards">${items.map(([ic,t,d,w]) => `<div c
 
 /* ---------- 인물 ---------- */
 const PEOPLE = {
-  boss:     [{name:'서제혁', age:40, sex:'남성', role:'본부장', photo:'증명사진.1_서제혁.webp'}],
-  field:    [
+  boss:        [{name:'서제혁', age:40, sex:'남성', role:'청장', photo:'증명사진.1_서제혁.webp'}],
+  field:       [
     {name:'요미', age:35, sex:'남성', role:'팀장', photo:'증명사진.2_요미.webp'},
     {name:'도유신', age:36, sex:'남성', role:'구급대원', photo:'증명사진.3_도유신.webp'},
-    {name:'서이현', age:26, sex:'남성', role:'전투원', photo:'증명사진.4_서이현.webp'}
+    {name:'서이현', age:26, sex:'남성', role:'요원', photo:'증명사진.4_서이현.webp'}
   ],
-  research: [
+  special_ops: [
+    {name:'강하은', age:29, sex:'여성', role:'팀장', photo:'12.강하은.webp'},
+    {name:'세아', age:29, sex:'여성', role:'요원', photo:'증명사진_11.한세아.webp'},
+    {name:'백아린', age:25, sex:'여성', role:'요원', photo:'증명사진_9.백아린.webp'}
+  ],
+  research:    [
     {name:'류율', age:29, sex:'남성', role:'팀장', photo:'증명사진.5_류율.webp'},
     {hidden:true, role:'연구원', photo:'증명사진.6_.webp'}
   ],
-  special:  [{name:'한지우', age:33, sex:'남성', role:'팀장', photo:'증명사진.7_한지우.webp'}]
+  public:      [
+    {name:'소이', age:24, sex:'여성', role:'현장관제', photo:'증명사진_10.한소이.webp'}
+  ],
+  special:     [{name:'한지우', age:33, sex:'남성', role:'팀장', photo:'증명사진.7_한지우.webp'}],
+  support:     [{hidden:true, role:'환경요원'}],
+  audit:       [{name:'윤가희', age:28, sex:'여성', role:'팀장', photo:'증명사진_8.윤가희.webp'}]
 };
-const person = m => m.hidden
-  ? `<div class="pc"><div class="ph">${m.photo ? `<img src="${esc(m.photo)}" alt="">` : G(4)}</div><div><div class="pn">${G(3)}</div><div class="pm">${G(3)} · ${G(2)}</div><div class="pr">${esc(m.role)}</div></div></div>`
-  : `<div class="pc"><div class="ph">${m.photo ? `<img src="${esc(m.photo)}" alt="">` : '<span>증명사진</span>'}</div><div><div class="pn">${esc(m.name)}</div><div class="pm">${m.age}세 · ${m.sex}</div><div class="pr">${esc(m.role)}</div></div></div>`;
+PEOPLE.field1 = PEOPLE.field;
+PEOPLE.field2 = PEOPLE.special_ops;
+const person = m => {
+  if (m.hidden) return `<div class="pc"><div class="ph">${m.photo ? `<img src="${esc(m.photo)}" alt="">` : G(4)}</div><div><div class="pn">${G(3)}</div><div class="pm">${G(3)} · ${G(2)}</div><div class="pr">${esc(m.role)}</div></div></div>`;
+  if (m.blank) return `<div class="pc"><div class="ph"><span>공석</span></div><div><div class="pn" style="color:var(--sub)">공백</div><div class="pm">인적사항 미등록</div><div class="pr">${esc(m.role || '팀장')}</div></div></div>`;
+  return `<div class="pc"><div class="ph">${m.photo ? `<img src="${esc(m.photo)}" alt="">` : '<span>증명사진</span>'}</div><div><div class="pn">${esc(m.name)}</div><div class="pm">${m.age}세 · ${m.sex}</div><div class="pr">${esc(m.role)}</div></div></div>`;
+};
 const people = list => `<div class="pgrid">${list.map(person).join('')}</div>`;
 
 /* ---------- 알림마당 데이터 ---------- */
@@ -792,7 +823,7 @@ const faq = (q,a) => `<details class="nt"><summary>Q. ${q}</summary><p>${a}</p><
 const orgPage = (key, title, desc, duties) => ({ title, desc, html:() => `
   <section class="section"><h2>담당 업무</h2><div class="card"><ul>${duties.map(d => `<li>${d}</li>`).join('')}</ul></div></section>
   <section class="section"><h2>소속 인원</h2>${people(PEOPLE[key])}
-  ${key==='research' ? '<div class="notice" style="margin-top:14px">※ 일부 인원의 인적 사항은 비공개 처리됩니다.</div>' : ''}</section>` });
+  ${(key==='research'||key==='support') ? '<div class="notice" style="margin-top:14px">※ 일부 인원의 인적 사항은 보안 등급에 따라 비공개 처리됩니다.</div>' : ''}</section>` });
 
 const PAGES = {
   about: {
@@ -817,16 +848,24 @@ const PAGES = {
         <div class="org">
           <div class="box top">청장</div>
           <div class="row">
-            <a class="box" href="#/about/field">현장대응과<div class="muted" style="font-weight:400;font-size:13px">출동 · 구조 · 진압</div></a>
-            <a class="box" href="#/about/research">분석연구과<div class="muted" style="font-weight:400;font-size:13px">분석 · 연구 · 장비</div></a>
-            <a class="box" href="#/about/special">특별관리과<div class="muted" style="font-weight:400;font-size:13px">관리 · 기록 · 감시</div></a>
+            <a class="box" href="#/about/field">현장대응과<div class="muted" style="font-weight:400;font-size:13px">통제 · 대피 · 회수</div></a>
+            <a class="box" href="#/about/special_ops">현장특임과<div class="muted" style="font-weight:400;font-size:13px">특수대응 · 위험배제 · 진압</div></a>
+            <a class="box" href="#/about/research">분석연구과<div class="muted" style="font-weight:400;font-size:13px">물질분석 · 장비개발 · 특수연구</div></a>
+            <a class="box" href="#/about/public">정보지원과<div class="muted" style="font-weight:400;font-size:13px">통합관제 · 신호제어 · 안전안내</div></a>
+            <a class="box" href="#/about/special">특별관리과<div class="muted" style="font-weight:400;font-size:13px">자원관리 · 시설보존 · 정밀보관</div></a>
+            <a class="box" href="#/about/support">환경지원과<div class="muted" style="font-weight:400;font-size:13px">환경정비 · 잔여물정화 · 원상복구</div></a>
+            <a class="box" href="#/about/audit">내부감찰과<div class="muted" style="font-weight:400;font-size:13px">공직기강 · 복무감사 · 인재선발</div></a>
           </div>
         </div>
         <p class="muted" style="margin-top:14px;font-size:13.5px;text-align:center">각 부서를 선택하면 소속 인원을 확인할 수 있습니다.</p>
       </section>` },
-    field: orgPage('field','현장대응과 1팀','재난 현장에 출동하여 대응하는 부서입니다.',['특수 재난 현장 출동 및 진압','민간인 대피 · 구조','현장 통제선 설치 · 운영','현장 수습 및 보고']),
-    research: orgPage('research','분석연구과','재난을 분석하고 대응 장비를 연구하는 부서입니다.',['재난 원인 · 유형 분석','대응 장비 개발 및 개선','현장 대응 인력 지원 연구']),
-    special: orgPage('special','특별관리과','특수 관리 대상과 기록을 관리하는 부서입니다.',['특수 관리 대상 감시','사건 기록 · 자료 관리','보관 시설 운영']),
+    field: orgPage('field','현장대응과','관내 발생하는 비정형 특수 안전사고 현장에 신속 출동하여 주민 안전을 확보하고 현장을 수습하는 부서입니다.',['특수 안전사고 현장 1차 통제선 설치 및 주민 안전 대피 유도','원인 미상 위험 요인의 안전 격리 및 핵심 표본 회수','특수 장비 보안 및 안전 수칙에 따른 현장 운용 관리','현장 위험요소 1차 차단 및 상황 수습 결과 보고']),
+    special_ops: orgPage('special_ops','현장특임과','일반적 수단으로 통제가 불가능한 고위험 재난 사태에 긴급 투입되어 위험 요소를 완전히 배제하고 상황을 종결하는 특수 대응 부서입니다.',['통제 기준을 초과한 고위험 재난 구역 비상 기동 투입','대규모 인명 피해 방지를 위한 중대 위험 요소 완전 무력화 조치','원거리 관측 정밀 대응 및 전술 기동 진압 작전 수행','현장 최종 안전 구역 확보 및 상황 종결 조치']),
+    research: orgPage('research','분석연구과','사고 원인 물질의 물리·생체 특성을 정밀 분석하고 대응 장비 및 특수 기술을 연구·개발하는 부서입니다.',['특수 재난 잔류 물질 및 미상 생체 표본의 정밀 성분 분석','특수 환경 전용 방호 장비 및 첨단 진압 기기 연구·개발','특수 적합성 인력 대상 생체 반응 개선 및 기술 지원 연구','현장 대응 요원 신체 안정화 및 특수 역학 지원']),
+    public: orgPage('public','정보지원과','청사 종합관제 시스템을 운영하며, 현장과 시민에게 실시간 교통·안전 정보를 안내하고 비상 상황을 조율하는 부서입니다.',['청사 통합 관제 시스템 운영 및 재난 구역 실시간 모니터링','공공 인프라(신호·통신망) 비상 관제 및 교통 흐름 조정 지원','재난 발생 시 시민 안전 대피 경로 및 보도 자료 제공','현장 출동 인력에 대한 비상 통신망 지원 및 지령 전파']),
+    special: orgPage('special','특별관리과','특수 보호 대상 인력 및 고위험 자원을 보호·관리하며, 정밀 보존 시설을 운영하고 중요 기록을 영구 보존하는 부서입니다.',['특수 보호 대상 인력에 대한 안전 관리 및 상태 관찰','특수 생체 신호 해석 및 심층 상태 데이터 모니터링','초저온 특수 보존 시설(실린더 보관소) 운영 및 정밀 자원 관리','비공개 중요 재난 기록물 및 기밀 자료의 영구 보존']),
+    support: orgPage('support','환경지원과','재난 수습 후 현장 주변의 유해 물질을 정화·세척하고, 주변 환경을 신속하게 일상 상태로 복구하는 환경 정비 전담 부서입니다.',['현장 수습 후 특수 오염 잔여물 수거 및 완전 무해화 처리','공공 환경 관리 기관과 연계한 도로·시설물 정밀 세척','미상의 화학·생물학적 잔류 물질 정밀 중화 작업','사고 현장 환경 원상복구 및 주민 일상 복귀 지원']),
+    audit: orgPage('audit','내부감찰과','본부 소속 공직자의 보안 규정 준수 여부를 감찰하고 공직 기강을 확립하며, 특수 직무 전문 인재를 발굴·영입하는 감사 부서입니다.',['공직 기강 확립을 위한 정기 복무 감사 및 보안 규정 점검','보안 규정 위반 및 직무 태만 행위에 대한 조사와 엄정한 조치','특수 직무 수행에 적합한 내·외부 전문 인재의 발굴 및 특별 영입','청사 내 기밀 누설 방지 및 조직 청렴도 유지 활동']),
     location: { title:'오시는 길', desc:'특수재난경찰청 청사 위치 및 교통편을 안내합니다.', html:() => `
       <div class="map-wrap">
         <div class="map-top">
@@ -941,20 +980,24 @@ const PAGES = {
     '': { title:'업무 개요', desc:'특수재난경찰청의 주요 업무를 안내합니다.', html:() => `
       <section class="section"><h2>주요 업무</h2>
         <div class="grid g2">
-          <div class="card"><h3>재난 현장 대응</h3><ul><li>특수 재난 현장 출동 및 진압</li><li>현장 통제 및 수습</li></ul></div>
-          <div class="card"><h3>시민 보호</h3><ul><li>민간인 대피 · 구조 지원</li><li>피해 지역 주민 안내</li></ul></div>
-          <div class="card"><h3>분석 · 연구</h3><ul><li>재난 원인 및 사례 분석</li><li>대응 장비 개발 · 운용 연구</li></ul></div>
-          <div class="card"><h3>관리 · 기록</h3><ul><li>특수 관리 대상 및 시설 감시</li><li>사건 기록 · 자료 보존</li></ul></div>
+          <div class="card"><h3>재난 현장 대응</h3><ul><li>비정형 특수 안전사고 현장 긴급 출동 및 통제</li><li>고위험 재난 구역 기동 대응 및 상황 수습</li></ul></div>
+          <div class="card"><h3>시민 보호</h3><ul><li>재난 지역 주민 안전 대피 및 응급 구급 지원</li><li>피해 우려 지역 실시간 안전 정보 안내</li></ul></div>
+          <div class="card"><h3>원인 분석 · 연구</h3><ul><li>미상 잔류 물질 물리·생체 성분 정밀 분석</li><li>특수 방호 장비 및 첨단 진압 기기 개발</li></ul></div>
+          <div class="card"><h3>관리 · 환경 복구</h3><ul><li>특수 보호 대상 자원 및 시설 정밀 관리</li><li>사고 현장 유해 잔여물 정화 및 환경 원상복구</li></ul></div>
         </div>
         <div class="notice" style="margin-top:16px">※ 본부 업무의 상당수는 「보안업무규정」에 따라 상세 내용을 공개하지 않습니다.</div>
       </section>` },
     dept: { title:'조직별 업무', desc:'부서별로 수행하는 업무를 안내합니다.', html:() => `
       <section class="section"><h2>부서별 담당 업무</h2>
         <table class="board"><thead><tr><th style="width:140px">부서</th><th>담당 업무</th></tr></thead><tbody>
-          <tr><td><b>본부장</b></td><td class="t">본부 업무 총괄 · 정부 및 관계 기관 협조 · 대외 공개 범위 결정</td></tr>
-          <tr><td><b><a href="#/about/field">현장대응과</a></b></td><td class="t">재난 현장 출동 및 진압 · 민간인 대피 · 구조 · 통제선 설치 및 운영 · 현장 수습 및 보고</td></tr>
-          <tr><td><b><a href="#/about/research">분석연구과</a></b></td><td class="t">재난 원인 · 유형 분석 · 대응 장비 개발 및 개선 · 현장 대응 인력 지원 연구</td></tr>
-          <tr><td><b><a href="#/about/special">특별관리과</a></b></td><td class="t">특수 관리 대상 감시 · 사건 기록 및 자료 관리 · 보관 시설 운영</td></tr>
+          <tr><td><b>청장</b></td><td class="t">특수재난경찰청 총괄 · 정부 및 관계 기관 협조 · 대외 공개 범위 최종 결정</td></tr>
+          <tr><td><b><a href="#/about/field">현장대응과</a></b></td><td class="t">비정형 특수 안전사고 현장 통제 · 주민 안전 대피 유도 · 미상 표본 회수 및 1차 수습</td></tr>
+          <tr><td><b><a href="#/about/special_ops">현장특임과</a></b></td><td class="t">고위험 비상 사태 긴급 기동 투입 · 중대 위험 요인 강제 배제 및 완전 무력화 조치</td></tr>
+          <tr><td><b><a href="#/about/research">분석연구과</a></b></td><td class="t">사고 원인 물질 정밀 분석 · 특수 대응 장비 연구 개발 · 현장 인력 생체 적합 기술 지원</td></tr>
+          <tr><td><b><a href="#/about/public">정보지원과</a></b></td><td class="t">청사 통합 관제 시스템 운영 · 공공 인프라 비상 조정 · 실시간 안전 대피 경로 안내</td></tr>
+          <tr><td><b><a href="#/about/special">특별관리과</a></b></td><td class="t">특수 보호 대상 인력 관리 · 초저온 특수 보존 시설(실린더) 운영 · 중요 기록 영구 보존</td></tr>
+          <tr><td><b><a href="#/about/support">환경지원과</a></b></td><td class="t">재난 수습 현장 오염 물질 정밀 세척 및 무해화 처리 · 도로 및 주변 환경 원상복구</td></tr>
+          <tr><td><b><a href="#/about/audit">내부감찰과</a></b></td><td class="t">공직 기강 확립 및 보안 규정 점검 · 규정 위반 행위 조사 및 조치 · 특수 인재 특별 영입</td></tr>
         </tbody></table>
       </section>` },
     process: { title:'재난 대응 절차', desc:'재난 발생부터 수습까지의 대응 절차입니다.', html:() => `
@@ -1066,6 +1109,9 @@ const PAGES = {
       </div></section>` }
   }
 };
+PAGES.about.field1 = PAGES.about.field;
+PAGES.about.field2 = PAGES.about.special_ops;
+
 function pageStatic(sec, k){
   const p = PAGES[sec][k];
   setNav(sec);
